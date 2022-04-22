@@ -111,5 +111,8 @@ DEPENDENCIES
   dotenv-rails
   telegram-bot-ruby
 
+RUBY VERSION
+   ruby 3.0.3p157
+
 BUNDLED WITH
    1.17.3
