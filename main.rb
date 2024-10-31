@@ -1,3 +1,5 @@
+require 'dotenv'
+Dotenv.load
 require 'telegram/bot'
 TOKEN = ENV['TOKEN']
 
