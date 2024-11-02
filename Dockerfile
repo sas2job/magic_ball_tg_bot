@@ -1,9 +1,6 @@
 FROM ruby:3.3.2-alpine
 
-RUN apk update && apk upgrade
-RUN apk add --no-cache \
-  build-essential \
-  libpq-dev
+RUN apk add --no-cache build-base
 
 WORKDIR /app
 
