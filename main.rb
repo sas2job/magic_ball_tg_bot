@@ -31,21 +31,32 @@ ANSWERS = [
   "Very doubtful (Весьма сомнительно)"
 ]
 
+def send_message(bot, chat_id, text)
+  begin
+    bot.api.send_message(chat_id: chat_id, text: text)
+  rescue Telegram::Bot::Exceptions::ResponseError => e
+    if e.error_code == 429
+      retry_after = e.parameters['retry_after'].to_i
+      puts "Too many requests. Retrying after #{retry_after} seconds."
+      sleep(retry_after)
+      retry
+    else
+      puts "An error occurred: #{e.message}"
+    end
+  end
+end
+
 Telegram::Bot::Client.run(TOKEN) do |bot|
   bot.listen do |message|
     case message.text
     when '/start', '/start start'
-      bot.api.send_message(
-        chat_id: message.chat.id,
-        text: 
-        "Hello, #{message.from.first_name}." \
+      send_message(
+        bot, message.chat.id,
+        "Hello, #{message.from.first_name}." + \
         "It's a magic ball. Ask it a question and you'll get the answer."
       )
     else
-      bot.api.send_message(
-        chat_id: message.chat.id,
-        text: ANSWERS.sample
-      )
+      send_message(bot, message.chat.id, ANSWERS.sample)
     end
   end
 end
