@@ -47,17 +47,21 @@ def send_message(bot, chat_id, text)
 end
 
 Telegram::Bot::Client.run(TOKEN) do |bot|
-  bot.listen do |message|
-    case message.text
-    when '/start', '/start start'
-      send_message(
-        bot, message.chat.id,
-        "Hello, #{message.from.first_name}." + \
-        "It's a magic ball. Ask it a question and you'll get the answer."
-      )
+  bot.listen do |update|
+    if update.is_a?(Telegram::Bot::Types::Message) && update.text
+      case update.text
+      when '/start', '/start start'
+        send_message(
+          bot, update.chat.id,
+          "Hello, #{update.from.first_name}. " \
+          "It's a magic ball. Ask it a question and you'll get the answer."
+        )
+      else
+        sleep(7)
+        send_message(bot, update.chat.id, ANSWERS.sample)
+      end
     else
-      sleep(7)
-      send_message(bot, message.chat.id, ANSWERS.sample)
+      puts "Received an update of type: #{update.class}"
     end
   end
 end
