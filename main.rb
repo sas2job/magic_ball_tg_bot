@@ -57,7 +57,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           "It's a magic ball. Ask it a question and you'll get the answer."
         )
       else
-        sleep(7)
+        sleep(15)
         send_message(bot, update.chat.id, ANSWERS.sample)
       end
     else
