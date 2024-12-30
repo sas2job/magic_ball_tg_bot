@@ -1,3 +1,5 @@
+require 'dotenv'
+Dotenv.load
 require 'telegram/bot'
 TOKEN = ENV['TOKEN']
 
@@ -29,21 +31,37 @@ ANSWERS = [
   "Very doubtful (Весьма сомнительно)"
 ]
 
-Telegram::Bot::Client.run(TOKEN) do |bot|
-  bot.listen do |message|
-    case message.text
-    when '/start', '/start start'
-      bot.api.send_message(
-        chat_id: message.chat.id,
-        text: 
-        "Hello, #{message.from.first_name}." \
-        "It's a magic ball. Ask it a question and you'll get the answer."
-      )
+def send_message(bot, chat_id, text)
+  begin
+    bot.api.send_message(chat_id: chat_id, text: text)
+  rescue Telegram::Bot::Exceptions::ResponseError => e
+    if e.error_code == 429
+      retry_after = e.parameters['retry_after'].to_i
+      puts "Too many requests. Retrying after #{retry_after} seconds."
+      sleep(retry_after)
+      retry
     else
-      bot.api.send_message(
-        chat_id: message.chat.id,
-        text: ANSWERS.sample
-      )
+      puts "An error occurred: #{e.message}"
+    end
+  end
+end
+
+Telegram::Bot::Client.run(TOKEN) do |bot|
+  bot.listen do |update|
+    if update.is_a?(Telegram::Bot::Types::Message) && update.text
+      case update.text
+      when '/start', '/start start'
+        send_message(
+          bot, update.chat.id,
+          "Hello, #{update.from.first_name}. " \
+          "It's a magic ball. Ask it a question and you'll get the answer."
+        )
+      else
+        sleep(15)
+        send_message(bot, update.chat.id, ANSWERS.sample)
+      end
+    else
+      puts "Received an update of type: #{update.class}"
     end
   end
 end
