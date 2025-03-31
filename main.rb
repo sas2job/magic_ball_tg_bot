@@ -47,7 +47,10 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
       case update.text
       when '/start', '/start start'
         keyboard = Telegram::Bot::Types::ReplyKeyboardMarkup.new(
-          keyboard: [["Встряхнуть бота", "Shake the bot"]],
+          keyboard: [[
+            Telegram::Bot::Types::KeyboardButton.new(text: "Встряхнуть бота"),
+            Telegram::Bot::Types::KeyboardButton.new(text: "Shake the bot")
+          ]],
           one_time_keyboard: true,
           resize_keyboard: true
         )
