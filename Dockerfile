@@ -1,4 +1,4 @@
-FROM ruby:3.3.2-alpine
+FROM ruby:3.4.3-alpine
 
 RUN apk add --no-cache build-base
 
@@ -8,6 +8,6 @@ COPY Gemfile Gemfile.lock ./
 
 RUN bundle install
 
-COPY . /app
+COPY . .
 
 CMD ["ruby", "main.rb"]

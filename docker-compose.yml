@@ -1,0 +1,12 @@
+services:
+  bot:
+    build: .
+    container_name: telegram_magic_bot
+    environment:
+      - RACK_ENV=production
+      - BOT_TOKEN=${BOT_TOKEN}
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    restart: unless-stopped

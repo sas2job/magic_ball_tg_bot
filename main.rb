@@ -1,7 +1,7 @@
 require 'dotenv'
 Dotenv.load
 require 'telegram/bot'
-TOKEN = ENV['TOKEN']
+TOKEN = ENV['BOT_TOKEN']
 
 ANSWERS = [
   "It is certain (Бесспорно)",
