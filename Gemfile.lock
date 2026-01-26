@@ -30,7 +30,7 @@ GEM
       faraday-net_http (>= 2.0, < 3.5)
       json
       logger
-    faraday-multipart (1.1.1)
+    faraday-multipart (1.2.0)
       multipart-post (~> 2.0)
     faraday-net_http (3.4.2)
       net-http (~> 0.5)
@@ -57,7 +57,7 @@ DEPENDENCIES
   telegram-bot-ruby (= 2.2)
 
 RUBY VERSION
-   ruby 3.4.3p32
+  ruby 4.0.1p0
 
 BUNDLED WITH
-   2.5.22
+  4.0.4
