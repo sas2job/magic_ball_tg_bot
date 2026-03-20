@@ -41,9 +41,18 @@ def send_message(bot, chat_id, text, reply_markup = nil)
   end
 end
 
+def supported_chat?(message)
+  %w[private group supergroup].include?(message.chat&.type)
+end
+
 Telegram::Bot::Client.run(TOKEN) do |bot|
   bot.listen do |update|
     if update.is_a?(Telegram::Bot::Types::Message)
+      unless supported_chat?(update)
+        puts "Skipping unsupported chat type: #{update.chat&.type} (chat_id=#{update.chat&.id})"
+        next
+      end
+
       case update.text
       when '/start', '/start start'
         keyboard = Telegram::Bot::Types::ReplyKeyboardMarkup.new(
