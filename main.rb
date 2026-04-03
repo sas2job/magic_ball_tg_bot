@@ -1,7 +1,11 @@
 require 'dotenv'
 Dotenv.load
 require 'telegram/bot'
+require 'set'
+
 TOKEN = ENV['BOT_TOKEN']
+LOCK_FILE = '/tmp/magic_ball_tg_bot.pid'
+UNSUPPORTED_CHAT_IDS = Set.new
 
 ANSWERS = [
   "It is certain (Бесспорно)",
@@ -31,7 +35,8 @@ def send_message(bot, chat_id, text, reply_markup = nil)
     bot.api.send_message(chat_id: chat_id, text: text, reply_markup: reply_markup)
   rescue Telegram::Bot::Exceptions::ResponseError => e
     if e.error_code == 429
-      retry_after = e.parameters['retry_after'].to_i
+      retry_after = e.parameters&.[]('retry_after').to_i
+      retry_after = 1 if retry_after <= 0
       puts "Too many requests. Retrying after #{retry_after} seconds."
       sleep(retry_after)
       retry
@@ -45,35 +50,139 @@ def supported_chat?(message)
   %w[private group supergroup].include?(message.chat&.type)
 end
 
-Telegram::Bot::Client.run(TOKEN) do |bot|
-  bot.listen do |update|
-    if update.is_a?(Telegram::Bot::Types::Message)
-      unless supported_chat?(update)
-        puts "Skipping unsupported chat type: #{update.chat&.type} (chat_id=#{update.chat&.id})"
-        next
-      end
+def log_unsupported_chat_once(message)
+  chat_id = message.chat&.id
+  chat_type = message.chat&.type
+  key = "#{chat_type}:#{chat_id}"
+  return if UNSUPPORTED_CHAT_IDS.include?(key)
 
-      case update.text
-      when '/start', '/start start'
-        keyboard = Telegram::Bot::Types::ReplyKeyboardMarkup.new(
-          keyboard: [[
-            Telegram::Bot::Types::KeyboardButton.new(text: "Встряхнуть бота"),
-            Telegram::Bot::Types::KeyboardButton.new(text: "Shake the bot")
-          ]],
-          one_time_keyboard: true,
-          resize_keyboard: true
-        )
-        send_message(bot, update.chat.id,
-          "Hello, #{update.from.first_name}. " \
-          "It's a magic ball. Ask it a question or shake the bot!", keyboard)
-      when 'Встряхнуть бота', 'Shake the bot'
-        send_message(bot, update.chat.id, ANSWERS.sample)
-      else
-        sleep(15)
-        send_message(bot, update.chat.id, ANSWERS.sample)
+  UNSUPPORTED_CHAT_IDS.add(key)
+  puts "Skipping unsupported chat type: #{chat_type} (chat_id=#{chat_id})"
+end
+
+def bot_process_pid?(pid)
+  cmdline = File.binread("/proc/#{pid}/cmdline").tr("\0", ' ').strip
+  return false if cmdline.empty?
+
+  cmdline.include?('ruby') && cmdline.include?('main.rb')
+rescue Errno::ENOENT, Errno::EACCES
+  false
+end
+
+def bot_process_running?(pid)
+  Process.kill(0, pid)
+  bot_process_pid?(pid)
+rescue Errno::ESRCH
+  false
+rescue Errno::EPERM
+  # Process exists but we do not have signal permission; rely on cmdline check.
+  bot_process_pid?(pid)
+end
+
+def with_single_instance_lock
+  pid = Process.pid
+
+  if File.exist?(LOCK_FILE)
+    existing_pid = File.read(LOCK_FILE).strip.to_i
+    if existing_pid.positive?
+      if bot_process_running?(existing_pid)
+        puts "Another local bot instance is already running (pid=#{existing_pid})."
+        puts "Stop it and run again: kill #{existing_pid}"
+        exit(1)
       end
+    end
+  end
+
+  File.write(LOCK_FILE, pid)
+
+  begin
+    yield
+  ensure
+    if File.exist?(LOCK_FILE) && File.read(LOCK_FILE).strip == pid.to_s
+      File.delete(LOCK_FILE)
+    end
+  end
+end
+
+def handle_polling_conflict(error)
+  return false unless error.is_a?(Telegram::Bot::Exceptions::ResponseError)
+  return false unless error.error_code == 409
+
+  puts 'Telegram polling conflict (409): another bot instance is already calling getUpdates.'
+  puts 'Make sure only one process/container uses this BOT_TOKEN at a time.'
+  puts 'Waiting 15 seconds before retrying polling.'
+  sleep(15)
+  true
+end
+
+def handle_polling_error(error)
+  return false unless error.is_a?(Telegram::Bot::Exceptions::ResponseError)
+
+  return true if handle_polling_conflict(error)
+
+  case error.error_code
+  when 429
+    retry_after = error.parameters&.[]('retry_after').to_i
+    retry_after = 1 if retry_after <= 0
+    puts "Polling rate limit (429). Retrying after #{retry_after} seconds."
+    sleep(retry_after)
+    true
+  when 502
+    puts 'Telegram temporary error (502). Retrying after 3 seconds.'
+    sleep(3)
+    true
+  else
+    puts "Polling error (#{error.error_code}): #{error.message}"
+    sleep(3)
+    true
+  end
+end
+
+def process_update(bot, update)
+  if update.is_a?(Telegram::Bot::Types::Message)
+    unless supported_chat?(update)
+      log_unsupported_chat_once(update)
+      return
+    end
+
+    case update.text
+    when '/start', '/start start'
+      keyboard = Telegram::Bot::Types::ReplyKeyboardMarkup.new(
+        keyboard: [[
+          Telegram::Bot::Types::KeyboardButton.new(text: 'Встряхнуть бота'),
+          Telegram::Bot::Types::KeyboardButton.new(text: 'Shake the bot')
+        ]],
+        one_time_keyboard: true,
+        resize_keyboard: true
+      )
+      send_message(
+        bot,
+        update.chat.id,
+        "Hello, #{update.from.first_name}. It's a magic ball. Ask it a question or shake the bot!",
+        keyboard
+      )
+    when 'Встряхнуть бота', 'Shake the bot'
+      send_message(bot, update.chat.id, ANSWERS.sample)
     else
-      puts "Received an update of type: #{update.class}"
+      sleep(15)
+      send_message(bot, update.chat.id, ANSWERS.sample)
+    end
+  else
+    puts "Received an update of type: #{update.class}"
+  end
+end
+
+with_single_instance_lock do
+  Telegram::Bot::Client.run(TOKEN, allowed_updates: %w[message]) do |bot|
+    loop do
+      begin
+        bot.listen { |update| process_update(bot, update) }
+      rescue Telegram::Bot::Exceptions::ResponseError => e
+        raise unless handle_polling_error(e)
+      rescue StandardError => e
+        puts "Unexpected polling error: #{e.class}: #{e.message}"
+        sleep(3)
+      end
     end
   end
 end
