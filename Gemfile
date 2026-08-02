@@ -13,4 +13,6 @@ group :development do
   gem 'capistrano', '~> 3.20', require: false
   gem 'capistrano-asdf', '~> 1.1', require: false
   gem 'capistrano-bundler', '~> 2.2', require: false
+  gem 'bcrypt_pbkdf', '~> 1.1', require: false
+  gem 'ed25519', '~> 1.4', require: false
 end
