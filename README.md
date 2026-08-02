@@ -29,3 +29,16 @@ $ docker compose up
 ```console
 $ docker-compose down
 ```
+
+## Deploy with Capistrano
+
+### Local
+```console
+bundle install
+bundle exec cap production deploy
+```
+
+### Server
+- `asdf` ставится в `/root/.asdf`
+- проект выкладывается в `/root/projects/magic_ball_tg_bot`
+- для запуска нужен `/root/projects/magic_ball_tg_bot/shared/.env` с `BOT_TOKEN`
