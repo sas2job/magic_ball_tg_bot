@@ -5,7 +5,7 @@ lock '~> 3.20.1'
 set :application, 'magic_ball_tg_bot'
 set :repo_url, 'git@github.com:sas2job/magic_ball_tg_bot.git'
 set :branch, 'master'
-set :deploy_to, '/root/projects/magic_ball_tg_bot'
+set :deploy_to, '/home/deploy/projects/magic_ball_tg_bot'
 set :format, :airbrussh
 set :pty, true
 set :keep_releases, 5
