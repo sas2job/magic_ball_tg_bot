@@ -39,6 +39,13 @@ bundle exec cap production deploy
 ```
 
 ### Server
-- `asdf` ставится в `/root/.asdf`
-- проект выкладывается в `/root/projects/magic_ball_tg_bot`
-- для запуска нужен `/root/projects/magic_ball_tg_bot/shared/.env` с `BOT_TOKEN`
+- деплой выполняется под пользователем `deploy`
+- `asdf` находится в `/home/deploy/.asdf`
+- проект выкладывается в `/home/deploy/projects/magic_ball_tg_bot`
+- для запуска нужен `/home/deploy/projects/magic_ball_tg_bot/shared/.env` с `BOT_TOKEN`
+- после деплоя бот запускается через `bin/restart_bot.sh`
+
+### Notes
+- в проекте используется Ruby `4.0.6`
+- `dotenv` должен быть доступен в production bundle
+- если бот не отвечает, проверьте `/home/deploy/projects/magic_ball_tg_bot/shared/log/bot.log`
