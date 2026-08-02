@@ -52,7 +52,7 @@ GEM
     i18n (1.15.2)
       concurrent-ruby (~> 1.0)
     ice_nine (0.11.2)
-    json (2.17.1.2)
+    json (2.19.9)
     logger (1.7.0)
     multipart-post (2.4.1)
     net-http (0.9.1)
