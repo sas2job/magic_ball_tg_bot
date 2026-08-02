@@ -18,7 +18,7 @@ namespace :asdf do
   task :install do
     on roles(:app) do
       within release_path do
-        execute "bash -lc 'source /home/deploy/.asdf/asdf.sh && asdf install'"
+        execute "bash -c 'source /home/deploy/.asdf/asdf.sh && asdf install'"
       end
     end
   end
@@ -51,7 +51,7 @@ namespace :bot do
           nohup bundle exec ruby main.rb > #{shared_path}/log/bot.log 2>&1 &
         CMD
 
-        execute "bash -lc '#{command.gsub("'", %q('"'"'))}'"
+        execute "bash -c '#{command.gsub("'", %q('"'"'))}'"
       end
     end
   end
