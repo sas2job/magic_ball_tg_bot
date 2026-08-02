@@ -43,20 +43,7 @@ namespace :bot do
           next
         end
 
-        execute :bash, '-lc', <<~CMD
-          set -e
-          source /home/deploy/.asdf/asdf.sh
-          pid_file=/tmp/magic_ball_tg_bot.pid
-          if [ -f "$pid_file" ]; then
-            old_pid=$(cat "$pid_file")
-            if [ -n "$old_pid" ] && kill -0 "$old_pid" 2>/dev/null; then
-              kill "$old_pid" || true
-              sleep 2
-            fi
-          fi
-          mkdir -p #{shared_path}/log
-          nohup bundle exec ruby main.rb > #{shared_path}/log/bot.log 2>&1 &
-        CMD
+        execute :bash, 'bin/restart_bot.sh'
       end
     end
   end
