@@ -38,7 +38,8 @@ ANSWERS = [
 ].freeze
 
 def retry_after_seconds(error, default_seconds)
-  retry_after = error.parameters&.[]('retry_after').to_i
+  parameters = error.data['parameters'] || error.data[:parameters] || {}
+  retry_after = (parameters['retry_after'] || parameters[:retry_after]).to_i
   retry_after.positive? ? retry_after : default_seconds
 end
 
@@ -196,16 +197,18 @@ def process_update(bot, update)
   end
 end
 
-with_single_instance_lock do
-  Telegram::Bot::Client.run(TOKEN, allowed_updates: %w[message]) do |bot|
-    loop do
-      begin
-        bot.listen { |update| process_update(bot, update) }
-      rescue Telegram::Bot::Exceptions::ResponseError => e
-        raise unless handle_polling_error(e)
-      rescue StandardError => e
-        puts "Unexpected polling error: #{e.class}: #{e.message}"
-        sleep(3)
+if $PROGRAM_NAME == __FILE__
+  with_single_instance_lock do
+    Telegram::Bot::Client.run(TOKEN, allowed_updates: %w[message]) do |bot|
+      loop do
+        begin
+          bot.listen { |update| process_update(bot, update) }
+        rescue Telegram::Bot::Exceptions::ResponseError => e
+          raise unless handle_polling_error(e)
+        rescue StandardError => e
+          puts "Unexpected polling error: #{e.class}: #{e.message}"
+          sleep(3)
+        end
       end
     end
   end
