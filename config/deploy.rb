@@ -9,6 +9,14 @@ set :deploy_to, '/home/deploy/projects/magic_ball_tg_bot'
 set :format, :airbrussh
 set :pty, true
 set :keep_releases, 5
+set :bundle_env_variables, {
+  'ASDF_DIR' => '/home/deploy/.asdf',
+  'PATH' => '/home/deploy/.asdf/shims:/home/deploy/.asdf/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
+}
+set :default_env, {
+  'ASDF_DIR' => '/home/deploy/.asdf',
+  'PATH' => '/home/deploy/.asdf/shims:/home/deploy/.asdf/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
+}
 
 append :linked_files, '.env'
 append :linked_dirs, 'log', 'tmp/pids', 'tmp/cache'
@@ -18,7 +26,7 @@ namespace :asdf do
   task :install do
     on roles(:app) do
       within release_path do
-        execute "bash -lc 'source /home/deploy/.asdf/asdf.sh && asdf install'"
+        execute "bash -c 'source /home/deploy/.asdf/asdf.sh && asdf install'"
       end
     end
   end
@@ -35,23 +43,7 @@ namespace :bot do
           next
         end
 
-        command = <<~CMD
-          set -e
-          source /home/deploy/.asdf/asdf.sh
-          pid_file=/tmp/magic_ball_tg_bot.pid
-          if [ -f "$pid_file" ]; then
-            old_pid=$(cat "$pid_file")
-            if [ -n "$old_pid" ] && kill -0 "$old_pid" 2>/dev/null; then
-              kill "$old_pid" || true
-              sleep 2
-            fi
-          fi
-
-          mkdir -p #{shared_path}/log
-          nohup bundle exec ruby main.rb > #{shared_path}/log/bot.log 2>&1 &
-        CMD
-
-        execute "bash -lc '#{command.gsub("'", %q('"'"'))}'"
+        execute :bash, 'bin/restart_bot.sh'
       end
     end
   end
